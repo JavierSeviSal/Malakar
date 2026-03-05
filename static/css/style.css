@@ -25,7 +25,7 @@
 
   /* Soul colors */
   --soul-beige: #d4c5a9;
-  --soul-purple: #9c27b0;
+  --soul-purple: #BE288A;
   --soul-green: #4caf50;
   --soul-yellow: #ffeb3b;
   --soul-blue: #2196f3;
@@ -391,6 +391,47 @@ body {
 .input-section {
   border-left: 3px solid var(--accent2);
   animation: slideIn 0.25s ease;
+  padding-bottom: 0;
+}
+.input-section.expanded {
+  padding-bottom: 20px;
+}
+
+/* Collapsible header */
+.input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--accent2);
+  transition: color 0.2s;
+}
+.input-header:hover {
+  color: var(--text);
+}
+.input-chevron {
+  font-size: 1.1rem;
+  transition: transform 0.25s ease;
+}
+.input-section.expanded .input-chevron {
+  transform: rotate(90deg);
+}
+
+/* Collapsible body */
+.input-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+  opacity: 0;
+}
+.input-section.expanded .input-body {
+  max-height: 80vh;
+  opacity: 1;
+  overflow-y: auto;
 }
 
 @keyframes slideIn {
@@ -403,6 +444,7 @@ body {
   line-height: 1.75;
   color: var(--text);
   margin-bottom: 16px;
+  margin-top: 12px;
   max-height: 40vh;
   overflow-y: auto;
   padding-right: 8px;
@@ -768,26 +810,27 @@ body {
 .direction-indicator.dir-left  { border-left: 3px solid var(--accent2); }
 .direction-indicator.dir-right { border-right: 3px solid var(--accent2); }
 
-/* Exchange label */
-.exchange-label {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 16px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--gold);
-}
-
-/* Location chips */
-.location-priorities {
+/* Shield chips */
+.shield-chips {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+.shield-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg3);
+  border: 1.5px solid var(--accent2);
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Location chips */
 .location-chip {
   display: inline-flex;
   align-items: center;
@@ -802,25 +845,6 @@ body {
 }
 .location-chip.free    { border-left: 3px solid var(--soul-green); }
 .location-chip.special { border-left: 3px solid var(--gold); }
-.location-chip small {
-  font-weight: 400;
-  color: var(--text3);
-  font-size: 0.75rem;
-}
-
-/* Tower guest order */
-.tower-order { align-items: center; }
-.order-arrow {
-  color: var(--text3);
-  font-size: 0.9rem;
-}
-.order-label {
-  color: var(--text3);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════
    INFO GRID — .info-grid > .info-card

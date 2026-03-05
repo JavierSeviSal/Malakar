@@ -16,8 +16,6 @@ from .models import (
     GamePhase,
     DifficultyMode,
     SoloCard,
-    SoulColor,
-    LocationName,
     Deck,
 )
 from .cards import create_solo_deck, get_all_cards_map
@@ -109,9 +107,34 @@ class GameEngine:
             "Coloca calaveras de un color no usado junto a los puntos de Infamia en cada círculo del Infierno (excepto beige).",
         )
 
+        # Build setup prompt from logged messages so player can review
+        setup_entries = [
+            e for e in self.state.action_log if e.get("category") == "setup"
+        ]
+        prompt_en = (
+            "GAME SETUP\n\n"
+            + "\n".join(f"• {e['message']}" for e in setup_entries)
+            + "\n\nPrepare the board as described above, then click Continue."
+        )
+        prompt_es = (
+            "PREPARACIÓN DEL JUEGO\n\n"
+            + "\n".join(f"• {e.get('message_es', e['message'])}" for e in setup_entries)
+            + "\n\nPrepara el tablero como se describe arriba, luego haz clic en Continuar."
+        )
+
+        self.state.pending_input = {
+            "type": "setup_done",
+            "prompt": prompt_en,
+            "prompt_es": prompt_es,
+            "fields": [],
+        }
+        self.state.phase = GamePhase.WAITING_FOR_INPUT
+        self.state.next_phase_after_input = GamePhase.SETUP.value
+
         return {
             "status": "ok",
-            "message": "Game initialized. Complete setup on the board, then advance to start.",
+            "message": "Game initialized. Review setup steps, then click Continue.",
+            "input_needed": self.state.pending_input,
         }
 
     # ─── Phase execution ─────────────────────────────────────────────────
@@ -238,27 +261,13 @@ class GameEngine:
         return self._present_hell_phase()
 
     def _handle_reshuffle(self, reshuffle_card: SoloCard) -> dict:
-        """Handle the reshuffle card: reorganize tower, reshuffle deck, draw again."""
+        """Handle the reshuffle card: reshuffle deck, draw again."""
         self.state.reshuffle_triggered = True
 
-        # Log the reshuffle
-        reorg_note = ""
-        reorg_note_es = ""
-        if self.state.previous_card and not self.state.previous_card.is_reshuffle:
-            prev = self.state.previous_card
-            colors_en = ", ".join(
-                f"{c.emoji()} {c.label()}" for c in prev.tower_guest_order
-            )
-            colors_es = ", ".join(
-                f"{c.emoji()} {c.label_es()}" for c in prev.tower_guest_order
-            )
-            reorg_note = f" Reorganize Malakar's Tower using previous card #{prev.number} priorities (bottom→top): {colors_en}."
-            reorg_note_es = f" Reorganiza la Torre de Malakar usando las prioridades de la carta #{prev.number} (abajo→arriba): {colors_es}."
-
         self.state.log(
-            f"🔄 Reshuffle card drawn!{reorg_note} Shuffling deck and drawing again...",
+            "🔄 Reshuffle card drawn! Shuffling deck and drawing again...",
             "reshuffle",
-            f"🔄 ¡Carta de Rebarajar robada!{reorg_note_es} Barajando mazo y robando de nuevo...",
+            "🔄 ¡Carta de Rebarajar robada! Barajando mazo y robando de nuevo...",
         )
 
         # Collect discard pile + remaining solo deck into new deck
@@ -272,29 +281,19 @@ class GameEngine:
         self.state.solo_deck.shuffle()
         self.state.discard_pile = Deck(name="discard")
 
-        # Prompt player to acknowledge reshuffle (tower reorganization)
-        if self.state.previous_card and not self.state.previous_card.is_reshuffle:
-            prev = self.state.previous_card
-            lang = self.state.language
-            colors = ", ".join(
-                f"{c.emoji()} {c.label() if lang == 'en' else c.label_es()}"
-                for c in prev.tower_guest_order
-            )
-            self.state.pending_input = {
-                "type": "acknowledge_reshuffle",
-                "prompt": f"Reshuffle card drawn! Reorganize Malakar's Tower using card #{prev.number} priorities.\n\nGuest order (bottom → top): {colors}\n\nPlace Guests on different levels, leave a free space next to each. Then click Continue.",
-                "prompt_es": f"¡Carta de Rebarajar robada! Reorganiza la Torre de Malakar usando las prioridades de la carta #{prev.number}.\n\nOrden de invitados (abajo → arriba): {colors}\n\nColoca los Invitados en niveles diferentes, deja un espacio libre junto a cada uno. Luego haz clic en Continuar.",
-                "fields": [],
-            }
-            self.state.phase = GamePhase.WAITING_FOR_INPUT
-            self.state.next_phase_after_input = GamePhase.DRAW_CARD.value
-            return {
-                "status": "waiting",
-                "input_needed": self.state.pending_input,
-            }
-
-        # No previous card (first draw) — just draw again
-        return self._do_draw_card()
+        # Prompt player to acknowledge reshuffle
+        self.state.pending_input = {
+            "type": "acknowledge_reshuffle",
+            "prompt": "Reshuffle card drawn! All discards have been shuffled back into the deck.\n\nClick Continue to draw the next card.",
+            "prompt_es": "¡Carta de Rebarajar robada! Todos los descartes se han barajado de vuelta al mazo.\n\nHaz clic en Continuar para robar la siguiente carta.",
+            "fields": [],
+        }
+        self.state.phase = GamePhase.WAITING_FOR_INPUT
+        self.state.next_phase_after_input = GamePhase.DRAW_CARD.value
+        return {
+            "status": "waiting",
+            "input_needed": self.state.pending_input,
+        }
 
     def _present_hell_phase(self) -> dict:
         """Present the Hell Phase guidance to the player."""
@@ -309,7 +308,11 @@ class GameEngine:
             f"{c.emoji()} {c.label() if lang == 'en' else c.label_es()}"
             for c in card.soul_priority
         )
-        direction = card.shield_direction
+        shield_list = ", ".join(
+            f"{s.emoji()} {s.label() if lang == 'en' else s.label_es()}"
+            for s in card.shield_priority
+        )
+        direction = card.arrow_direction
         dir_label = "far left" if direction == "left" else "far right"
         dir_label_es = "extremo izquierdo" if direction == "left" else "extremo derecho"
 
@@ -327,7 +330,8 @@ class GameEngine:
             f"   → Place on the highest possible circle.\n\n"
             f"TIE-BREAKING:\n"
             f"  Color priority: {soul_colors}\n"
-            f"  Shield placement: {dir_label} of the circle\n\n"
+            f"  Shield priority: {shield_list}\n"
+            f"  Arrow placement: {dir_label} of the circle\n\n"
             f"FIRST SOUL BONUS: When Malakar lays his first Soul in a circle, remove the skull marker and advance his skull on the matching Sin Track.\n\n"
             f"Resolve the Hell Phase on the board, then click Continue."
         )
@@ -346,7 +350,8 @@ class GameEngine:
             f"   → Colócala en el círculo más alto posible.\n\n"
             f"DESEMPATE:\n"
             f"  Prioridad de color: {soul_colors}\n"
-            f"  Colocación en escudo: {dir_label_es} del círculo\n\n"
+            f"  Prioridad de escudo: {shield_list}\n"
+            f"  Dirección de flecha: {dir_label_es} del círculo\n\n"
             f"BONIFICACIÓN PRIMERA ALMA: Cuando Malakar coloca su primera Alma en un círculo, retira el marcador de calavera y avanza su calavera en la Pista del Pecado correspondiente.\n\n"
             f"Resuelve la Fase del Infierno en el tablero, luego haz clic en Continuar."
         )
@@ -382,42 +387,23 @@ class GameEngine:
             for c in card.soul_priority
         )
 
-        free_loc = card.priority_location_free
-        special_loc = card.priority_location_special
-        free_label = (
-            (free_loc.label() if lang == "en" else free_loc.label_es())
-            if free_loc
-            else "—"
-        )
-        special_label = (
-            (special_loc.label() if lang == "en" else special_loc.label_es())
-            if special_loc
-            else "—"
+        shield_list = ", ".join(
+            f"{s.emoji()} {s.label() if lang == 'en' else s.label_es()}"
+            for s in card.shield_priority
         )
 
-        exchange_dir = card.exchange_direction
-        if exchange_dir == "left":
-            exchange_en = "Exchange 1 Florin → 1 Drachma (minimum)"
-            exchange_es = "Cambiar 1 Florín → 1 Dracma (mínimo)"
+        loc_type = card.priority_location
+        if loc_type == "special":
+            loc_en = "Special Location"
+            loc_es = "Ubicación Especial"
         else:
-            exchange_en = "Exchange maximum Florins → Drachmas"
-            exchange_es = "Cambiar máximo de Florines → Dracmas"
-
-        tie = card.tie_arrow
-        tie_en = "leftmost card" if tie == "left" else "rightmost card"
-        tie_es = (
-            "carta más a la izquierda" if tie == "left" else "carta más a la derecha"
-        )
-
-        guest_colors = ", ".join(
-            f"{c.emoji()} {c.label() if lang == 'en' else c.label_es()}"
-            for c in card.tower_guest_order
-        )
+            loc_en = "Free-access Location"
+            loc_es = "Ubicación de Libre Acceso"
 
         prompt_en = (
             f"FLORENCE PHASE — Card #{card.number}\n\n"
-            f"Malakar performs the Florence Phase at these priority locations:\n"
-            f"  1st priority: {free_label} (Free-Access) OR {special_label} (Special)\n\n"
+            f"Malakar performs the Florence Phase at a priority location:\n"
+            f"  Priority: {loc_en}\n\n"
             f"He prioritizes ACCUSING if conditions are met, otherwise performs the LOCATION ACTION.\n"
             f"If neither is possible at the priority area, tries the other area.\n"
             f"If he can place an Urchin at a Special location to avoid paying a Florin, he does so.\n\n"
@@ -433,13 +419,6 @@ class GameEngine:
             f"FAMILY COUNCIL (if nothing possible):\n"
             f"  Malakar loses NO Infamy. Try these in order:\n"
             f"  1) Move family member to home  2) Return resource/Guest  3) (other)\n\n"
-            f"EXCHANGE: {exchange_en}\n\n"
-            f"FRAUD CARDS: Choose in priority:\n"
-            f"  1) Card satisfying Instant Requirement\n"
-            f"  2) Card satisfying End of Game Requirement\n"
-            f"  3) First card from the Fraud deck\n"
-            f"  Tie-break: {tie_en}\n"
-            f"  (Malakar never plays his own cards; never pays extra cost)\n\n"
             f"PHLEGETHON: Move cube right on a track not at max. Priority:\n"
             f"  1) Track with his Diploma  2) His skull ahead of yours  3) Same level\n\n"
             f"RIVER STYX: Send back max Souls, advance on priority color track.\n\n"
@@ -448,15 +427,15 @@ class GameEngine:
             f"  Removing: Level with full Guest → Level with Guest + free spot → Highest level\n"
             f"  Guests: As high as possible, on levels with remaining space or without existing Guest\n\n"
             f"COLOR PRIORITIES: {soul_colors}\n"
-            f"GUEST ORDER (bottom→top): {guest_colors}\n\n"
+            f"SHIELD PRIORITIES: {shield_list}\n\n"
             f"Note: Beige Barrel = Yellow Soul priority; Burgundy Barrel = Purple Soul priority.\n\n"
             f"Resolve the Florence Phase on the board, then click Continue."
         )
 
         prompt_es = (
             f"FASE DE FLORENCIA — Carta #{card.number}\n\n"
-            f"Malakar realiza la Fase de Florencia en estas ubicaciones prioritarias:\n"
-            f"  1ª prioridad: {free_label} (Libre) O {special_label} (Especial)\n\n"
+            f"Malakar realiza la Fase de Florencia en una ubicación prioritaria:\n"
+            f"  Prioridad: {loc_es}\n\n"
             f"Prioriza ACUSAR si se cumplen las condiciones, sino realiza la ACCIÓN del lugar.\n"
             f"Si no es posible en el área prioritaria, intenta en la otra.\n"
             f"Si puede colocar un Pilluelo en un lugar Especial para no pagar un Florín, lo hace.\n\n"
@@ -472,13 +451,6 @@ class GameEngine:
             f"CONSEJO FAMILIAR (si nada es posible):\n"
             f"  Malakar NO pierde Infamia. Intenta en orden:\n"
             f"  1) Mover familiar a casa  2) Devolver recurso/Invitado  3) (otro)\n\n"
-            f"CAMBIO: {exchange_es}\n\n"
-            f"CARTAS DE FRAUDE: Elige por prioridad:\n"
-            f"  1) Carta que cumple Requisito Instantáneo\n"
-            f"  2) Carta que cumple Requisito de Fin de Partida\n"
-            f"  3) Primera carta del mazo de Fraude\n"
-            f"  Desempate: {tie_es}\n"
-            f"  (Malakar nunca juega sus propias cartas; nunca paga coste extra)\n\n"
             f"FLEGETONTE: Mover cubo a la derecha en una pista no al máximo. Prioridad:\n"
             f"  1) Pista con su Diploma  2) Su calavera por delante  3) Mismo nivel\n\n"
             f"RÍO ESTIGIA: Devolver máx. Almas, avanzar en pista de color prioritario.\n\n"
@@ -487,7 +459,7 @@ class GameEngine:
             f"  Retirando: Nivel con Invitado lleno → Nivel con Invitado con hueco → Nivel más alto\n"
             f"  Invitados: Lo más alto posible, en niveles con espacio o sin Invitado existente\n\n"
             f"PRIORIDADES DE COLOR: {soul_colors}\n"
-            f"ORDEN INVITADOS (abajo→arriba): {guest_colors}\n\n"
+            f"PRIORIDADES DE ESCUDO: {shield_list}\n\n"
             f"Nota: Barril beige = prioridad Alma amarilla; Barril burdeos = prioridad Alma púrpura.\n\n"
             f"Resuelve la Fase de Florencia en el tablero, luego haz clic en Continuar."
         )
@@ -582,7 +554,10 @@ class GameEngine:
     def _dispatch_input(self, input_type: str, data: dict) -> dict:
         """Route player input to the appropriate handler."""
 
-        if input_type == "hell_phase_done":
+        if input_type == "setup_done":
+            return self._handle_setup_done(data)
+
+        elif input_type == "hell_phase_done":
             return self._handle_hell_phase_done(data)
 
         elif input_type == "florence_phase_done":
@@ -598,6 +573,13 @@ class GameEngine:
             return self._handle_acknowledge(data)
 
         return {"status": "error", "message": f"Unknown input type: {input_type}"}
+
+    def _handle_setup_done(self, data: dict) -> dict:
+        """Player confirmed setup is complete — advance to first card draw."""
+        self.state.pending_input = None
+        self.state.next_phase_after_input = None
+        self.state.phase = GamePhase.SETUP
+        return self._do_setup_advance()
 
     def _handle_hell_phase_done(self, data: dict) -> dict:
         """Player confirmed Hell Phase is resolved."""

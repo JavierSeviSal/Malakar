@@ -4,6 +4,7 @@ venv/
 env/
 .venv/
 
+
 # Environment variables
 .env
 .env.local
@@ -14,6 +15,7 @@ env/
 .idea/
 .history
 .conda/
+.github/
 saves/
 saves_old_root/
 *.swp
@@ -41,3 +43,4 @@ __pycache__/
 
 # Misc
 agent_support_files/
+*.code-workspace

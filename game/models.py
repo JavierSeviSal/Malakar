@@ -134,6 +134,42 @@ class SoulColor(Enum):
         return _emojis.get(self.value, "⚪")
 
 
+class ShieldType(Enum):
+    """The 4 shield types on the solo cards."""
+
+    GOAT = "goat"
+    KEYS = "keys"
+    CHURCH = "church"
+    WHEEL = "wheel"
+
+    def label(self) -> str:
+        _labels = {
+            "goat": "Goat",
+            "keys": "Keys",
+            "church": "Church",
+            "wheel": "Wheel",
+        }
+        return _labels.get(self.value, self.value.capitalize())
+
+    def label_es(self) -> str:
+        _labels = {
+            "goat": "Cabra",
+            "keys": "Llaves",
+            "church": "Iglesia",
+            "wheel": "Rueda",
+        }
+        return _labels.get(self.value, self.value.capitalize())
+
+    def emoji(self) -> str:
+        _emojis = {
+            "goat": "🐐",
+            "keys": "🔑",
+            "church": "⛪",
+            "wheel": "☸️",
+        }
+        return _emojis.get(self.value, "🛡️")
+
+
 class LocationType(Enum):
     FREE_ACCESS = "free_access"
     SPECIAL = "special"
@@ -220,12 +256,10 @@ class SoloCard:
     """One of the 16 game cards (or the reshuffle card) in the Malakar solo deck.
 
     Each card encodes Malakar's priorities for the current turn:
-    - soul_priority: ordered list of soul colors for tie-breaking
-    - shield_direction: "left" or "right" — which side of a Hell circle to place souls
-    - exchange_direction: "left" (exchange 1 Florin) or "right" (exchange max)
-    - priority_location: which Florence locations Malakar prefers
-    - tie_arrow: "left" or "right" — for Fraud card tie-breaking
-    - tower_guest_order: guest color priorities for tower reorganization
+    - soul_priority: ordered list of 8 soul colors for tie-breaking
+    - shield_priority: ordered list of 4 shields for shield tie-breaking
+    - arrow_direction: "left" or "right" — directional arrow on the card
+    - priority_location: "free_access" or "special" — which location type Malakar prefers
     """
 
     number: int  # 1-16 for game cards, 17 for reshuffle
@@ -233,12 +267,9 @@ class SoloCard:
 
     # Priority data (only for game cards 1-16)
     soul_priority: list[SoulColor] = field(default_factory=list)
-    shield_direction: str = "left"  # "left" or "right"
-    exchange_direction: str = "left"  # "left" (1 Florin) or "right" (max)
-    priority_location_free: Optional[LocationName] = None
-    priority_location_special: Optional[LocationName] = None
-    tie_arrow: str = "left"  # "left" or "right"
-    tower_guest_order: list[SoulColor] = field(default_factory=list)
+    shield_priority: list[ShieldType] = field(default_factory=list)
+    arrow_direction: str = "left"  # "left" or "right"
+    priority_location: str = "free_access"  # "free_access" or "special"
 
     @property
     def image(self) -> str:
@@ -259,20 +290,9 @@ class SoloCard:
             d.update(
                 {
                     "soul_priority": [c.value for c in self.soul_priority],
-                    "shield_direction": self.shield_direction,
-                    "exchange_direction": self.exchange_direction,
-                    "priority_location_free": (
-                        self.priority_location_free.value
-                        if self.priority_location_free
-                        else None
-                    ),
-                    "priority_location_special": (
-                        self.priority_location_special.value
-                        if self.priority_location_special
-                        else None
-                    ),
-                    "tie_arrow": self.tie_arrow,
-                    "tower_guest_order": [c.value for c in self.tower_guest_order],
+                    "shield_priority": [s.value for s in self.shield_priority],
+                    "arrow_direction": self.arrow_direction,
+                    "priority_location": self.priority_location,
                 }
             )
         return d
@@ -409,6 +429,14 @@ class GameState:
         card = self.current_card
         lang = self.language
 
+        loc_type = card.priority_location
+        if loc_type == "special":
+            loc_label = "Special Location" if lang == "en" else "Ubicación Especial"
+        else:
+            loc_label = (
+                "Free-access Location" if lang == "en" else "Ubicación de Libre Acceso"
+            )
+
         return {
             "soul_priority": [
                 {
@@ -420,64 +448,19 @@ class GameState:
                 }
                 for c in card.soul_priority
             ],
-            "shield_direction": card.shield_direction,
-            "exchange_direction": card.exchange_direction,
-            "exchange_label": (
-                ("Exchange 1 Florin" if lang == "en" else "Cambiar 1 Florín")
-                if card.exchange_direction == "left"
-                else (
-                    "Exchange max Florins" if lang == "en" else "Cambiar máx. Florines"
-                )
-            ),
-            "priority_location_free": (
+            "shield_priority": [
                 {
-                    "name": (
-                        card.priority_location_free.value
-                        if card.priority_location_free
-                        else None
-                    ),
-                    "label": (
-                        card.priority_location_free.label()
-                        if card.priority_location_free and lang == "en"
-                        else (
-                            card.priority_location_free.label_es()
-                            if card.priority_location_free
-                            else None
-                        )
-                    ),
+                    "shield": s.value,
+                    "label": s.label() if lang == "en" else s.label_es(),
+                    "emoji": s.emoji(),
                 }
-                if card.priority_location_free
-                else None
-            ),
-            "priority_location_special": (
-                {
-                    "name": (
-                        card.priority_location_special.value
-                        if card.priority_location_special
-                        else None
-                    ),
-                    "label": (
-                        card.priority_location_special.label()
-                        if card.priority_location_special and lang == "en"
-                        else (
-                            card.priority_location_special.label_es()
-                            if card.priority_location_special
-                            else None
-                        )
-                    ),
-                }
-                if card.priority_location_special
-                else None
-            ),
-            "tie_arrow": card.tie_arrow,
-            "tower_guest_order": [
-                {
-                    "color": c.value,
-                    "label": c.label() if lang == "en" else c.label_es(),
-                    "emoji": c.emoji(),
-                }
-                for c in card.tower_guest_order
+                for s in card.shield_priority
             ],
+            "arrow_direction": card.arrow_direction,
+            "priority_location": {
+                "type": loc_type,
+                "label": loc_label,
+            },
         }
 
     def save_snapshot(self):

@@ -161,16 +161,19 @@ function bindEvents() {
     $("#btn-close-rules").onclick = () => hideOverlay(rulesOverlay);
   }
 
-  // Advance phase
+  // Advance phase (also handles submit when waiting for input)
   btnAdvance.onclick = advancePhase;
 
-  // Input submit
+  // Input submit (hidden button, kept for internal use)
   $("#btn-submit-input").onclick = submitInput;
 
-  // Close inline input on Escape
+  // Toggle collapsible input section
+  $("#input-header").onclick = toggleInputBody;
+
+  // Collapse input section on Escape
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !inputSection.classList.contains("hidden")) {
-      hideInputSection();
+    if (e.key === "Escape" && inputSection.classList.contains("expanded")) {
+      collapseInputBody();
     }
   });
 }
@@ -190,6 +193,22 @@ function showInputSection() {
 }
 function hideInputSection() {
   inputSection.classList.add("hidden");
+  inputSection.classList.remove("expanded");
+}
+function expandInputBody() {
+  inputSection.classList.add("expanded");
+  $("#input-header-chevron").textContent = "▾";
+}
+function collapseInputBody() {
+  inputSection.classList.remove("expanded");
+  $("#input-header-chevron").textContent = "▸";
+}
+function toggleInputBody() {
+  if (inputSection.classList.contains("expanded")) {
+    collapseInputBody();
+  } else {
+    expandInputBody();
+  }
 }
 
 // ─── New Game ──────────────────────────────────────────────────────────
@@ -212,8 +231,10 @@ async function startNewGame() {
     await refreshState();
     setStatus(result.message);
 
-    // Auto-advance to first card draw
-    advancePhase();
+    // Show setup steps in input section (no auto-advance)
+    if (result.input_needed) {
+      showInputPrompt(result.input_needed);
+    }
   } catch (e) {
     console.error("startNewGame error:", e);
     setStatus("Error starting game. Please try again.");
@@ -228,6 +249,12 @@ async function advancePhase() {
     gameScreen.classList.add("hidden");
     welcomeScreen.classList.remove("hidden");
     gameActive = false;
+    return;
+  }
+
+  // If waiting for input, delegate to submitInput instead
+  if (gameState && gameState.phase === "waiting_for_input" && gameState.pending_input) {
+    submitInput();
     return;
   }
 
@@ -357,12 +384,21 @@ function showInputPrompt(input) {
     container.appendChild(div);
   });
 
-  // If no fields, this is just a confirmation prompt
-  const submitBtn = $("#btn-submit-input");
-  if ((input.fields || []).length === 0) {
-    submitBtn.textContent = t("btn_continue");
+  // If fields are present, auto-expand so user sees them
+  const hasFields = (input.fields || []).length > 0;
+
+  // Start collapsed by default; auto-expand if there are fields
+  collapseInputBody();
+  if (hasFields) {
+    expandInputBody();
+  }
+
+  // Update header label based on input type
+  const headerLabel = $("#input-header-label");
+  if (input.type === "setup_done") {
+    headerLabel.textContent = t("setup_header");
   } else {
-    submitBtn.textContent = t("btn_submit");
+    headerLabel.textContent = t("input_header");
   }
 
   showInputSection();
@@ -485,59 +521,40 @@ function updateGuidance() {
     html += `</div></div>`;
   }
 
-  // Shield direction
-  html += `<div class="guidance-section guidance-row">`;
-  html += `<div class="guidance-item">`;
-  html += `<h4>🛡️ ${t("guidance_shield")}</h4>`;
-  html += `<span class="direction-indicator dir-${g.shield_direction}">`;
-  html += g.shield_direction === "left" ? "◀ Left" : "Right ▶";
-  html += `</span>`;
-  html += `</div>`;
-
-  // Exchange direction
-  html += `<div class="guidance-item">`;
-  html += `<h4>💰 ${t("guidance_exchange")}</h4>`;
-  html += `<span class="exchange-label">${g.exchange_label}</span>`;
-  html += `</div>`;
-  html += `</div>`;
-
-  // Priority Locations
-  if (g.priority_location_free || g.priority_location_special) {
+  // Shield Priority
+  if (g.shield_priority && g.shield_priority.length > 0) {
     html += `<div class="guidance-section">`;
-    html += `<h4>📍 ${t("guidance_location")}</h4>`;
-    html += `<div class="location-priorities">`;
-    if (g.priority_location_free) {
-      html += `<span class="location-chip free">🏠 ${g.priority_location_free.label} <small>(${es ? "Libre" : "Free"})</small></span>`;
-    }
-    if (g.priority_location_special) {
-      html += `<span class="location-chip special">⭐ ${g.priority_location_special.label} <small>(${es ? "Especial" : "Special"})</small></span>`;
-    }
-    html += `</div></div>`;
-  }
-
-  // Tie arrow
-  html += `<div class="guidance-section guidance-row">`;
-  html += `<div class="guidance-item">`;
-  html += `<h4>⚖️ ${t("guidance_tie")}</h4>`;
-  html += `<span class="direction-indicator dir-${g.tie_arrow}">`;
-  html += g.tie_arrow === "left" ? "◀ Left" : "Right ▶";
-  html += `</span>`;
-  html += `</div>`;
-  html += `</div>`;
-
-  // Tower Guest Order
-  if (g.tower_guest_order && g.tower_guest_order.length > 0) {
-    html += `<div class="guidance-section">`;
-    html += `<h4>🏰 ${t("guidance_tower")}</h4>`;
-    html += `<div class="soul-chips tower-order">`;
-    html += `<small class="order-label">${es ? "Abajo" : "Bottom"}</small>`;
-    g.tower_guest_order.forEach((s, i) => {
-      if (i > 0) html += `<span class="order-arrow">→</span>`;
-      html += `<span class="soul-chip color-${s.color}">${s.emoji} ${s.label}</span>`;
+    html += `<h4>🛡️ ${t("guidance_shield")}</h4>`;
+    html += `<div class="shield-chips">`;
+    g.shield_priority.forEach((s, i) => {
+      html += `<span class="shield-chip" title="${s.label}">`;
+      html += `<span class="chip-rank">${i + 1}</span>`;
+      html += `${s.emoji} ${s.label}`;
+      html += `</span>`;
     });
-    html += `<small class="order-label">${es ? "Arriba" : "Top"}</small>`;
     html += `</div></div>`;
   }
+
+  // Arrow Direction + Priority Location
+  html += `<div class="guidance-section guidance-row">`;
+  html += `<div class="guidance-item">`;
+  html += `<h4>➡️ ${t("guidance_arrow")}</h4>`;
+  html += `<span class="direction-indicator dir-${g.arrow_direction}">`;
+  html += g.arrow_direction === "left" ? "◀ Left" : "Right ▶";
+  html += `</span>`;
+  html += `</div>`;
+
+  // Priority Location
+  if (g.priority_location) {
+    html += `<div class="guidance-item">`;
+    html += `<h4>📍 ${t("guidance_location")}</h4>`;
+    const locType = g.priority_location.type;
+    const locClass = locType === "special" ? "special" : "free";
+    const locIcon = locType === "special" ? "⭐" : "🏠";
+    html += `<span class="location-chip ${locClass}">${locIcon} ${g.priority_location.label}</span>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
 
   content.innerHTML = html;
 }
@@ -630,8 +647,13 @@ function updateAdvanceButton() {
     btnAdvance.classList.add("pulse");
   } else if (phase === "waiting_for_input") {
     if (gameState.pending_input) {
-      btnAdvance.disabled = true;
-      btnAdvance.classList.remove("pulse");
+      // btn-advance stays enabled — it now submits input
+      btnAdvance.disabled = false;
+      btnAdvance.classList.add("pulse");
+      const hasFields = (gameState.pending_input.fields || []).length > 0;
+      btnAdvance.textContent = hasFields
+        ? (currentLang === "es" ? "Confirmar ▶" : "Confirm ▶")
+        : getAdvanceLabel(phase);
       // Only show if not already visible (avoid re-render flicker)
       if (inputSection.classList.contains("hidden")) {
         showInputPrompt(gameState.pending_input);

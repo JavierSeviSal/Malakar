@@ -3,26 +3,22 @@
 # ──────────────────────────────────────────────────────────────────────────────
 #
 # 17 solo deck cards for the Malakar automa (Inferno solo opponent):
-#   - 16 game cards (numbered 1-16) with priorities for Malakar's decisions
-#   - 1 reshuffle card (number 17) — triggers tower reorganization + deck reshuffle
+#   - 1 reshuffle card (number 1) — triggers deck reshuffle
+#   - 16 game cards (numbered 2-17) with priorities for Malakar's decisions
 #
 # CARD FIELDS (for cards 1-16):
 # ─────────────────────────────
-#   number:                  Card number (1-16)
-#   soul_priority:           Ordered list of soul colors for tie-breaking
-#                            (left-to-right, top-to-bottom as shown on card).
-#                            Colors: beige, purple, green, yellow, blue,
-#                                    orange, red, gray, ice_blue
-#   shield_direction:        "left" or "right" — which side of a Hell circle
-#                            to place souls (arrow on card)
-#   exchange_direction:      "left" (exchange 1 Florin) or "right" (exchange max)
-#   priority_location_free:  Free-access location Malakar prefers:
-#                            haystack, banquet, bank, courtyard
-#   priority_location_special: Special location Malakar prefers:
-#                              bonfire, wall, market, palace
-#   tie_arrow:               "left" or "right" — for tie-breaking (Fraud cards, etc.)
-#   tower_guest_order:       Ordered list of guest colors for tower reorganization
-#                            (bottom-to-top of tower)
+#   number:             Card number (1-16)
+#   soul_priority:      Ordered list of 8 soul colors for tie-breaking
+#                       (left-to-right, top-to-bottom as shown on card).
+#                       Colors: red, purple, blue, green, yellow, grey,
+#                               brown, ice_blue
+#                       (brown = orange/Heresy, grey = gray/Fraud)
+#   shield_priority:    Ordered list of 4 shields for shield tie-breaking
+#                       Shields: goat, keys, church, wheel
+#   arrow_direction:    "left" or "right" — directional arrow on the card
+#   priority_location:  "free_access" or "special" — which location type
+#                       Malakar prefers this turn
 #
 # NOTE: These values must be manually transcribed from the card images in
 #       agent_support_files/High Resolution Printing/card1-16.png
@@ -31,166 +27,118 @@
 
 solo_cards:
 
-# ── Card 1 ────────────────────────────────────────────────────────────────
+# ── Reshuffle card ────────────────────────────────────────────────────────
 - number: 1
-  soul_priority: [ purple, green, yellow, blue ]
-  shield_direction: left
-  exchange_direction: left
-  priority_location_free: haystack
-  priority_location_special: bonfire
-  tie_arrow: left
-  tower_guest_order: [ orange, red, gray, ice_blue ]
+  is_reshuffle: true
 
 # ── Card 2 ────────────────────────────────────────────────────────────────
 - number: 2
-  soul_priority: [ green, yellow, blue, orange ]
-  shield_direction: right
-  exchange_direction: right
-  priority_location_free: banquet
-  priority_location_special: wall
-  tie_arrow: right
-  tower_guest_order: [ ice_blue, gray, red, orange ]
+  soul_priority: [ purple, green, blue, yellow, brown, red, grey, ice_blue ]
+  shield_priority: [ keys, church, wheel, goat ]
+  arrow_direction: left
+  priority_location: special
 
 # ── Card 3 ────────────────────────────────────────────────────────────────
 - number: 3
-  soul_priority: [ yellow, blue, orange, red ]
-  shield_direction: left
-  exchange_direction: left
-  priority_location_free: bank
-  priority_location_special: market
-  tie_arrow: left
-  tower_guest_order: [ red, orange, ice_blue, gray ]
+  soul_priority: [ blue, brown, yellow, purple, green, red, ice_blue, grey ]
+  shield_priority: [ church, wheel, goat, keys ]
+  arrow_direction: right
+  priority_location: special
 
 # ── Card 4 ────────────────────────────────────────────────────────────────
 - number: 4
-  soul_priority: [ blue, orange, red, gray ]
-  shield_direction: right
-  exchange_direction: right
-  priority_location_free: courtyard
-  priority_location_special: palace
-  tie_arrow: right
-  tower_guest_order: [ gray, ice_blue, orange, red ]
+  soul_priority: [ yellow, grey, ice_blue, red, blue, purple, brown, green ]
+  shield_priority: [ wheel, goat, keys, church ]
+  arrow_direction: left
+  priority_location: special
 
 # ── Card 5 ────────────────────────────────────────────────────────────────
 - number: 5
-  soul_priority: [ orange, red, gray, ice_blue ]
-  shield_direction: left
-  exchange_direction: right
-  priority_location_free: haystack
-  priority_location_special: wall
-  tie_arrow: left
-  tower_guest_order: [ purple, green, yellow, blue ]
+  soul_priority: [ red, purple, blue, green, yellow, grey, brown, ice_blue ]
+  shield_priority: [ goat, keys, church, wheel ]
+  arrow_direction: right
+  priority_location: special
 
 # ── Card 6 ────────────────────────────────────────────────────────────────
 - number: 6
-  soul_priority: [ red, gray, ice_blue, purple ]
-  shield_direction: right
-  exchange_direction: left
-  priority_location_free: banquet
-  priority_location_special: bonfire
-  tie_arrow: right
-  tower_guest_order: [ blue, yellow, green, purple ]
+  soul_priority: [ brown, blue, green, yellow, red, purple, grey, ice_blue ]
+  shield_priority: [ keys, goat, church, wheel ]
+  arrow_direction: left
+  priority_location: free_access
 
 # ── Card 7 ────────────────────────────────────────────────────────────────
 - number: 7
-  soul_priority: [ gray, ice_blue, purple, green ]
-  shield_direction: left
-  exchange_direction: right
-  priority_location_free: bank
-  priority_location_special: palace
-  tie_arrow: left
-  tower_guest_order: [ orange, ice_blue, red, gray ]
+  soul_priority: [ ice_blue, yellow, brown, grey, blue, green, purple, red ]
+  shield_priority: [ church, goat, wheel, keys ]
+  arrow_direction: right
+  priority_location: free_access
 
 # ── Card 8 ────────────────────────────────────────────────────────────────
 - number: 8
-  soul_priority: [ ice_blue, purple, green, yellow ]
-  shield_direction: right
-  exchange_direction: left
-  priority_location_free: courtyard
-  priority_location_special: market
-  tie_arrow: right
-  tower_guest_order: [ gray, red, ice_blue, orange ]
+  soul_priority: [ green, red, ice_blue, blue, brown, purple, yellow, grey ]
+  shield_priority: [ wheel, keys, church, goat ]
+  arrow_direction: left
+  priority_location: free_access
 
 # ── Card 9 ────────────────────────────────────────────────────────────────
 - number: 9
-  soul_priority: [ purple, yellow, orange, gray ]
-  shield_direction: left
-  exchange_direction: left
-  priority_location_free: banquet
-  priority_location_special: bonfire
-  tie_arrow: left
-  tower_guest_order: [ green, blue, red, ice_blue ]
+  soul_priority: [ grey, brown, purple, ice_blue, yellow, blue, red, green ]
+  shield_priority: [ goat, wheel, keys, church ]
+  arrow_direction: right
+  priority_location: free_access
 
 # ── Card 10 ───────────────────────────────────────────────────────────────
 - number: 10
-  soul_priority: [ green, blue, red, ice_blue ]
-  shield_direction: right
-  exchange_direction: right
-  priority_location_free: haystack
-  priority_location_special: market
-  tie_arrow: right
-  tower_guest_order: [ purple, yellow, orange, gray ]
+  soul_priority: [ blue, purple, yellow, grey, red, green, brown, ice_blue ]
+  shield_priority: [ keys, church, goat, wheel ]
+  arrow_direction: left
+  priority_location: free_access
 
 # ── Card 11 ───────────────────────────────────────────────────────────────
 - number: 11
-  soul_priority: [ yellow, orange, gray, purple ]
-  shield_direction: left
-  exchange_direction: right
-  priority_location_free: courtyard
-  priority_location_special: wall
-  tie_arrow: left
-  tower_guest_order: [ blue, green, ice_blue, red ]
+  soul_priority: [ yellow, green, blue, brown, ice_blue, purple, grey, red ]
+  shield_priority: [ church, wheel, keys, goat ]
+  arrow_direction: right
+  priority_location: special
 
 # ── Card 12 ───────────────────────────────────────────────────────────────
 - number: 12
-  soul_priority: [ blue, red, ice_blue, green ]
-  shield_direction: right
-  exchange_direction: left
-  priority_location_free: bank
-  priority_location_special: palace
-  tie_arrow: right
-  tower_guest_order: [ yellow, orange, purple, gray ]
+  soul_priority: [ ice_blue, grey, green, red, yellow, blue, brown, purple ]
+  shield_priority: [ wheel, goat, church, keys ]
+  arrow_direction: left
+  priority_location: special
 
 # ── Card 13 ───────────────────────────────────────────────────────────────
 - number: 13
-  soul_priority: [ orange, gray, purple, yellow ]
-  shield_direction: left
-  exchange_direction: left
-  priority_location_free: haystack
-  priority_location_special: palace
-  tie_arrow: left
-  tower_guest_order: [ red, ice_blue, blue, green ]
+  soul_priority: [ red, blue, green, purple, brown, grey, yellow, ice_blue ]
+  shield_priority: [ goat, church, wheel, keys ]
+  arrow_direction: right
+  priority_location: free_access
 
 # ── Card 14 ───────────────────────────────────────────────────────────────
 - number: 14
-  soul_priority: [ red, ice_blue, green, blue ]
-  shield_direction: right
-  exchange_direction: right
-  priority_location_free: banquet
-  priority_location_special: market
-  tie_arrow: right
-  tower_guest_order: [ orange, gray, purple, yellow ]
+  soul_priority: [ brown, yellow, ice_blue, green, purple, red, blue, grey ]
+  shield_priority: [ keys, wheel, goat, church ]
+  arrow_direction: left
+  priority_location: special
 
 # ── Card 15 ───────────────────────────────────────────────────────────────
 - number: 15
-  soul_priority: [ gray, purple, yellow, orange ]
-  shield_direction: left
-  exchange_direction: right
-  priority_location_free: bank
-  priority_location_special: bonfire
-  tie_arrow: left
-  tower_guest_order: [ ice_blue, red, green, blue ]
+  soul_priority: [ purple, grey, blue, yellow, brown, ice_blue, green, red ]
+  shield_priority: [ church, goat, keys, wheel ]
+  arrow_direction: right
+  priority_location: free_access
 
 # ── Card 16 ───────────────────────────────────────────────────────────────
 - number: 16
-  soul_priority: [ ice_blue, green, blue, red ]
-  shield_direction: right
-  exchange_direction: left
-  priority_location_free: courtyard
-  priority_location_special: wall
-  tie_arrow: right
-  tower_guest_order: [ yellow, purple, gray, orange ]
+  soul_priority: [ green, blue, red, yellow, grey, brown, purple, ice_blue ]
+  shield_priority: [ wheel, keys, goat, church ]
+  arrow_direction: left
+  priority_location: free_access
 
-# ── Reshuffle card ────────────────────────────────────────────────────────
+# ── Card 17 ────────────────────────────────────────────────────────────────
 - number: 17
-  is_reshuffle: true
+  soul_priority: [ grey, purple, yellow, blue, green, ice_blue, red, brown ]
+  shield_priority: [ goat, keys, wheel, church ]
+  arrow_direction: right
+  priority_location: special

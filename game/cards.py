@@ -12,12 +12,17 @@ from typing import Any
 
 import yaml
 
-from .models import SoloCard, SoulColor, LocationName, Deck
+from .models import SoloCard, SoulColor, ShieldType, LocationName, Deck
 
 _CARDS_YAML = Path(__file__).parent / "cards.yaml"
 
-# Valid soul color strings → SoulColor enum
+# Valid soul color strings → SoulColor enum (includes display aliases)
 _COLOR_MAP = {c.value: c for c in SoulColor}
+_COLOR_MAP["brown"] = SoulColor.ORANGE  # alias: brown → orange (Heresy)
+_COLOR_MAP["grey"] = SoulColor.GRAY  # alias: grey → gray (Fraud)
+
+# Valid shield type strings → ShieldType enum
+_SHIELD_MAP = {s.value: s for s in ShieldType}
 
 # Valid location name strings → LocationName enum
 _LOCATION_MAP = {loc.value: loc for loc in LocationName}
@@ -34,6 +39,17 @@ def _parse_color_list(raw: list[str]) -> list[SoulColor]:
             result.append(_COLOR_MAP[c])
         else:
             raise ValueError(f"Unknown soul color: '{c}'")
+    return result
+
+
+def _parse_shield_list(raw: list[str]) -> list[ShieldType]:
+    """Convert a list of shield strings to ShieldType enums."""
+    result = []
+    for s in raw:
+        if s in _SHIELD_MAP:
+            result.append(_SHIELD_MAP[s])
+        else:
+            raise ValueError(f"Unknown shield type: '{s}'")
     return result
 
 
@@ -57,12 +73,9 @@ def _parse_solo_card(raw: dict) -> SoloCard:
         number=num,
         is_reshuffle=False,
         soul_priority=_parse_color_list(raw.get("soul_priority", [])),
-        shield_direction=raw.get("shield_direction", "left"),
-        exchange_direction=raw.get("exchange_direction", "left"),
-        priority_location_free=_parse_location(raw.get("priority_location_free")),
-        priority_location_special=_parse_location(raw.get("priority_location_special")),
-        tie_arrow=raw.get("tie_arrow", "left"),
-        tower_guest_order=_parse_color_list(raw.get("tower_guest_order", [])),
+        shield_priority=_parse_shield_list(raw.get("shield_priority", [])),
+        arrow_direction=raw.get("arrow_direction", "left"),
+        priority_location=raw.get("priority_location", "free_access"),
     )
 
 
