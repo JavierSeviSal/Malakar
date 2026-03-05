@@ -263,6 +263,7 @@ class GameEngine:
     def _handle_reshuffle(self, reshuffle_card: SoloCard) -> dict:
         """Handle the reshuffle card: reshuffle deck, draw again."""
         self.state.reshuffle_triggered = True
+        self.state.current_card = reshuffle_card
 
         self.state.log(
             "🔄 Reshuffle card drawn! Shuffling deck and drawing again...",
