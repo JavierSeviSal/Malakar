@@ -395,11 +395,16 @@ function showInputPrompt(input) {
 
   // Update header label based on input type
   const headerLabel = $("#input-header-label");
-  if (input.type === "setup_done") {
-    headerLabel.textContent = t("setup_header");
-  } else {
-    headerLabel.textContent = t("input_header");
-  }
+  const inputHeaderKeys = {
+    setup_done: "setup_header",
+    hell_phase_done: "input_header_hell",
+    florence_phase_done: "input_header_florence",
+    turn_end_check: "input_header_turn_end",
+    acknowledge_reshuffle: "input_header_reshuffle",
+  };
+  const headerKey = inputHeaderKeys[input.type] || "input_header";
+  headerLabel.textContent = t(headerKey);
+  headerLabel.dataset.i18n = headerKey;
 
   showInputSection();
 }
